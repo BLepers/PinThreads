@@ -29,7 +29,7 @@ extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, voi
    CPU_SET(last_core, &mask);
    pthread_setaffinity_np(*thread, sizeof(mask), &mask);
 
-   printf("-> Set affinity to %d\n", (int) *thread, last_core);
+   printf("-> Set affinity to %d\n", last_core);
 
    return ret;
 }
