@@ -4,7 +4,7 @@ LDFLAGS=
 OBJECTS = pin.o 
 
 .PHONY: all clean
-all: makefile.dep pin.so
+all: makefile.dep pinthreads pin.so
 
 makefile.dep: *.[Cch]
 	for i in *.[Cc]; do gcc -MM "$${i}" ${CFLAGS}; done > $@
@@ -12,10 +12,16 @@ makefile.dep: *.[Cch]
 -include makefile.dep
 
 pin.so: pin.c
-	g++ -fPIC ${CFLAGS} -c pin.c
-	g++ -shared -o pin.so pin.o -ldl -lpthread
-	#g++ -shared -Wl,-soname,libpmalloc.so -o ldlib.so ldlib.o -ldl -lpthread
+	${CXX} -fPIC ${CFLAGS} -c pin.c
+	${CXX} -shared -o pin.so pin.o -ldl -lpthread
+
+pinthreads: pinthreads.c
+	${CC} ${CFLAGS} -o pinthreads pinthreads.c
+
+install:
+	mkdir -p /usr/local/lib/pinthreads/
+	cp pin.so /usr/local/lib/pinthreads/
+	cp pinthreads /usr/local/bin
 
 clean:
-	rm -f *.o *.so makefile.dep
-
+	rm -f *.o *.so makefile.dep pinthreads
