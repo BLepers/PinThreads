@@ -22,7 +22,7 @@ static int next_core = 0;
 static void m_init(void);
 static int (*old_pthread_create) (pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 
-extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
    if(!old_pthread_create)
       m_init();
 
@@ -42,12 +42,23 @@ extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, voi
    return ret;
 }
 
+int pthread_setaffinity_np(pthread_t thread, size_t cpusetsize, const cpu_set_t *cpuset) {
+   printf("Ignoring call to pthread_setaffinity_np performed by the application\n");
+   return 0;
+}
+
+int sched_setaffinity(pid_t pid, size_t cpusetsize, cpu_set_t *mask) {
+   printf("Ignoring call to sched_setaffinity performed by the application\n");
+   return 0;
+}
+
 void __attribute__((constructor)) m_init(void) {
    char * result = NULL;
    char * end_str;
    int ncores = get_nprocs();
    char * args;
 
+   int (*old_sched_setaffinity) (pid_t, size_t, cpu_set_t*) = (int (*) (pid_t, size_t, cpu_set_t*)) dlsym(RTLD_NEXT, "sched_setaffinity");
    old_pthread_create = (int (*)(pthread_t*, const pthread_attr_t*, void* (*)(void*), void*)) dlsym(RTLD_NEXT, "pthread_create");
 
    cores_len = ncores;
@@ -116,6 +127,6 @@ void __attribute__((constructor)) m_init(void) {
 
    CPU_ZERO(&mask);
    CPU_SET(core, &mask);
-   sched_setaffinity(syscall(__NR_gettid), sizeof(mask), &mask);
+   old_sched_setaffinity(syscall(__NR_gettid), sizeof(mask), &mask);
    printf("-> Set affinity to %d\n", core);
 }
