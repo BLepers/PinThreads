@@ -22,7 +22,7 @@ int main(int argc, char **argv){
       switch (c) {
          case 'c':
             if(cores) {
-               fprintf(stderr, "-c alrady used !\n");
+               fprintf(stderr, "-c already used !\n");
                exit(EXIT_FAILURE);
             }
             cores = malloc(strlen(optarg) + 1);
