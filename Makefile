@@ -1,4 +1,5 @@
-CFLAGS=-Wall -g -ggdb3 -O0 
+PREFIX=/usr/local
+CFLAGS=-Wall -g -g -O2 -DPREFIX="\"${PREFIX}\""
 LDFLAGS=
 
 OBJECTS = pin.o 
@@ -19,9 +20,9 @@ pinthreads: pinthreads.c
 	${CC} ${CFLAGS} -o pinthreads pinthreads.c
 
 install:
-	mkdir -p /usr/local/lib/pinthreads/
-	cp pin.so /usr/local/lib/pinthreads/
-	cp pinthreads /usr/local/bin
+	mkdir -p ${PREFIX}/lib/pinthreads/
+	cp pin.so ${PREFIX}/lib/pinthreads/
+	cp pinthreads ${PREFIX}/bin
 
 clean:
 	rm -f *.o *.so makefile.dep pinthreads

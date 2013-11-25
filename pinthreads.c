@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
+#include <assert.h>
 
 void usage(char * app_name) {
    fprintf(stderr, "Usage: %s -c <list of cores> <command>\n", app_name);
@@ -19,7 +20,7 @@ int main(int argc, char **argv){
 
    while ((c = getopt(argc, argv, "+c:")) != -1) {
       char * result = NULL;
-      char * end_str;
+      char * end_str = NULL;
 
       switch (c) {
          case 'c':
@@ -83,19 +84,20 @@ int main(int argc, char **argv){
    buffer[lib_path_len + 1] = '\0';
    path = dirname(buffer);
 
-   asprintf(&lib, "%s/pin.so", path);
+   assert(asprintf(&lib, "%s/pin.so", path)>0);
 
    setenv("PINTHREADS_CORES", cores, 1);
 
 
    FILE * flib = fopen(lib, "r");
    if(!flib) {
-      setenv("LD_PRELOAD", "/usr/local/lib/pinthreads/pin.so", 1);
+      setenv("LD_PRELOAD", PREFIX "/lib/pinthreads/pin.so", 1);
    } else {
       setenv("LD_PRELOAD", lib, 1);
       fclose(flib);
-      free(lib);
    }
+
+   free(lib);
 
    execvp(argv[0], argv);
    perror("execvp");
