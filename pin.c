@@ -24,14 +24,19 @@ static int (*old_pthread_create) (pthread_t *thread, const pthread_attr_t *attr,
 static int (*old_pthread_setaffinity_np) (pthread_t, size_t, const cpu_set_t *);
 static int (*old_sched_setaffinity) (pid_t, size_t, const cpu_set_t*);
 
+static pthread_mutex_t pin_lock = PTHREAD_MUTEX_INITIALIZER;
+
 extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+   int core;
+   int ret;
+   cpu_set_t mask;
+
+   pthread_mutex_lock(&pin_lock);
    if(!old_pthread_create)
       m_init();
 
-   int core;  
-   int ret = old_pthread_create(thread, attr, start_routine, arg);
+   ret = old_pthread_create(thread, attr, start_routine, arg);
 
-   cpu_set_t mask;
    core = cores[next_core]; 
    next_core = (next_core + 1) % (nr_entries_in_cores);
 
@@ -40,6 +45,8 @@ extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, voi
    old_pthread_setaffinity_np(*thread, sizeof(mask), &mask);
 
    printf("-> Set affinity to %d\n", core);
+
+   pthread_mutex_unlock(&pin_lock);
 
    return ret;
 }
@@ -59,6 +66,13 @@ void __attribute__((constructor)) m_init(void) {
    char * end_str;
    int ncores = get_nprocs();
    char * args;
+
+   pthread_mutex_lock(&pin_lock);
+   if(old_pthread_create) {
+      printf("Already initialized !\n");
+      pthread_mutex_unlock(&pin_lock);
+      return;
+   }
 
    old_sched_setaffinity = (int (*) (pid_t, size_t, const cpu_set_t*)) dlsym(RTLD_NEXT, "sched_setaffinity");
    old_pthread_setaffinity_np = (int (*) (pthread_t, size_t, const cpu_set_t *)) dlsym(RTLD_NEXT, "pthread_setaffinity_np");
@@ -132,4 +146,6 @@ void __attribute__((constructor)) m_init(void) {
    CPU_SET(core, &mask);
    old_sched_setaffinity(syscall(__NR_gettid), sizeof(mask), &mask);
    printf("-> Set affinity to %d\n", core);
+
+   pthread_mutex_unlock(&pin_lock);
 }
