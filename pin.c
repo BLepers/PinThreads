@@ -12,9 +12,9 @@
 #include <sys/syscall.h>
 #include <string.h>
 #include <assert.h>
+#include "parse_args.h"
 
 static int* cores;
-static int cores_len;
 static int nr_entries_in_cores = 0;
 
 static int next_core = 0;
@@ -26,7 +26,7 @@ static int (*old_sched_setaffinity) (pid_t, size_t, const cpu_set_t*);
 
 static pthread_mutex_t pin_lock = PTHREAD_MUTEX_INITIALIZER;
 
-extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
    int core;
    int ret;
    cpu_set_t mask;
@@ -51,20 +51,17 @@ extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr, voi
    return ret;
 }
 
-extern "C" int pthread_setaffinity_np(pthread_t thread, size_t cpusetsize, const cpu_set_t *cpuset) {
+int pthread_setaffinity_np(pthread_t thread, size_t cpusetsize, const cpu_set_t *cpuset) {
    printf("-> Ignoring call to pthread_setaffinity_np performed by the application\n");
    return 0;
 }
 
-extern "C" int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
+int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
    printf("-> Ignoring call to sched_setaffinity performed by the application\n");
    return 0;
 }
 
 void __attribute__((constructor)) m_init(void) {
-   char * result = NULL;
-   char * end_str;
-   int ncores = get_nprocs();
    char * args;
 
    pthread_mutex_lock(&pin_lock);
@@ -78,70 +75,13 @@ void __attribute__((constructor)) m_init(void) {
    old_pthread_setaffinity_np = (int (*) (pthread_t, size_t, const cpu_set_t *)) dlsym(RTLD_NEXT, "pthread_setaffinity_np");
    old_pthread_create = (int (*)(pthread_t*, const pthread_attr_t*, void* (*)(void*), void*)) dlsym(RTLD_NEXT, "pthread_create");
 
-   cores_len = ncores;
-   cores = (int*) calloc(cores_len, sizeof(int));
-
    args = getenv("PINTHREADS_CORES");
-   result = strtok_r(args, "," , &end_str);
-   while( result != NULL ) {
-      char * end_str2;
-      int prev = -1;
-
-      char * result2 = strtok_r(result, "-", &end_str2);
-      while(result2 != NULL) {
-         if(prev < 0) {
-            prev = atoi(result2);
-            if(prev < 0 || prev >= ncores){
-               fprintf(stderr, "%d is not a valid core number. Must be comprised between 0 and %d\n", prev, ncores-1);
-               exit(EXIT_FAILURE);
-            }
-
-            /* Add to cores array */
-            if(++nr_entries_in_cores > cores_len) {
-               cores_len *= 2;
-               cores = (int*) realloc (cores, cores_len * sizeof(int));
-               assert(cores);
-            }
-
-            cores[nr_entries_in_cores-1] = prev;
-         }
-         else {
-            int i;
-            int core = atoi(result2);
-
-            if(core < 0 || core >= ncores){
-               fprintf(stderr, "%d is not a valid core number. Must be comprised between 0 and %d\n", core, ncores-1);
-               exit(EXIT_FAILURE);
-            }
-
-            if(prev > core) {
-               fprintf(stderr, "%d-%d is not a valid core range\n", prev, core);
-               exit(EXIT_FAILURE);
-            }
-
-            for(i = prev + 1; i <= core; i++) {
-               /* Add to cores array */
-               if(++nr_entries_in_cores > cores_len) {
-                  cores_len *= 2;
-                  cores = (int*) realloc (cores, cores_len * sizeof(int));
-                  assert(cores);
-               }
-               cores[nr_entries_in_cores -1 ] = i;
-            }
-            prev = core;
-         }
-
-         result2 = strtok_r(NULL, "-", &end_str2);
-      }
-
-      result = strtok_r(NULL, "," , &end_str);
-   }
-
-   cpu_set_t mask;
+   parse_cores(args, &cores, &nr_entries_in_cores);
 
    int core = cores[next_core]; 
    next_core = (next_core + 1) % (nr_entries_in_cores);
 
+   cpu_set_t mask;
    CPU_ZERO(&mask);
    CPU_SET(core, &mask);
    old_sched_setaffinity(syscall(__NR_gettid), sizeof(mask), &mask);

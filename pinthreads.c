@@ -6,6 +6,7 @@
 #include <string.h>
 #include <libgen.h>
 #include <assert.h>
+#include "parse_args.h"
 
 void usage(char * app_name) {
    fprintf(stderr, "Usage: %s -c <list of cores> <command>\n", app_name);
@@ -13,63 +14,47 @@ void usage(char * app_name) {
    exit(EXIT_FAILURE);
 }
 
+#define PATH_LEN 512
+char *get_lib_path() {
+   char buffer[PATH_LEN], *lib, *path;
+   int lib_path_len = readlink("/proc/self/exe", buffer, PATH_LEN);
+   buffer[lib_path_len + 1] = '\0';
+   path = dirname(buffer);
+   assert(asprintf(&lib, "%s/pin.so", path));
+
+   FILE * flib = fopen(lib, "r");
+   if(!flib) {
+      free(lib);
+      assert(asprintf(&lib, PREFIX "lib/pinthreads/pin.so"));
+   } else {
+      fclose(flib);
+   }
+   return lib;
+}
+
 int main(int argc, char **argv){
-   int ncores = get_nprocs();
-   char* cores = NULL;
    char c;
+   char *cores = NULL;
 
    while ((c = getopt(argc, argv, "+c:")) != -1) {
-      char * result = NULL;
-      char * end_str = NULL;
-
       switch (c) {
          case 'c':
             if(cores) {
                fprintf(stderr, "-c already used !\n");
                exit(EXIT_FAILURE);
             }
+            
             cores = malloc(strlen(optarg) + 1);
             strcpy(cores, optarg);
 
-            result = strtok_r( optarg, "," , &end_str);
-            while( result != NULL ) {
-               char * end_str2;
-               int prev = -1;
-
-               char * result2 = strtok_r(result, "-", &end_str2);
-               while(result2 != NULL) {
-                  if(prev < 0) {
-                     prev = atoi(result2);
-                     if(prev < 0 || prev >= ncores){
-                        fprintf(stderr, "%d is not a valid core number. Must be comprised between 0 and %d\n", prev, ncores-1);
-                        exit(EXIT_FAILURE);
-                     }
-                  }
-                  else {
-                     int core = atoi(result2);
-                     if(core < 0 || core >= ncores){
-                        fprintf(stderr, "%d is not a valid core number. Must be comprised between 0 and %d\n", core, ncores-1);
-                        exit(EXIT_FAILURE);
-                     }
-
-                     if(prev > core) {
-                        fprintf(stderr, "%d-%d is not a valid core range\n", prev, core);
-                        exit(EXIT_FAILURE);
-                     }
-
-                  }
-                  
-                  result2 = strtok_r(NULL, "-", &end_str2);
-               }
-               result = strtok_r(NULL, "," , &end_str);
-            }
+            parse_cores(optarg, NULL, NULL);
             break;
          default:
             usage(argv[0]);
       }
    }
 
-   if(! cores) {
+   if(!cores) {
       usage(argv[0]);
    }
 
@@ -79,25 +64,11 @@ int main(int argc, char **argv){
 
    argv +=  optind;  
    
-   char buffer[512], *lib, *path;
-   int lib_path_len = readlink("/proc/self/exe", buffer, 512);
-   buffer[lib_path_len + 1] = '\0';
-   path = dirname(buffer);
-
-   assert(asprintf(&lib, "%s/pin.so", path)>0);
-
+   char *lib = get_lib_path();
    setenv("PINTHREADS_CORES", cores, 1);
-
-
-   FILE * flib = fopen(lib, "r");
-   if(!flib) {
-      setenv("LD_PRELOAD", PREFIX "/lib/pinthreads/pin.so", 1);
-   } else {
-      setenv("LD_PRELOAD", lib, 1);
-      fclose(flib);
-   }
-
+   setenv("LD_PRELOAD", lib, 1);
    free(lib);
+
 
    execvp(argv[0], argv);
    perror("execvp");

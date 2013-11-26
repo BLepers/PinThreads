@@ -1,5 +1,5 @@
 PREFIX=/usr/local
-CFLAGS=-Wall -g -g -O2 -DPREFIX="\"${PREFIX}\""
+CFLAGS=-Wall -g -g -O2 -DPREFIX="\"${PREFIX}\"" -fPIC
 LDFLAGS=
 
 OBJECTS = pin.o 
@@ -12,12 +12,12 @@ makefile.dep: *.[Cch]
 	
 -include makefile.dep
 
-pin.so: pin.c
-	${CXX} -fPIC ${CFLAGS} -c pin.c
-	${CXX} -shared -o pin.so pin.o -ldl -lpthread
+pin.so: pin.o parse_args.o
+	${CC} -shared -o pin.so pin.o parse_args.o -ldl -lpthread
 
-pinthreads: pinthreads.c
-	${CC} ${CFLAGS} -o pinthreads pinthreads.c
+pinthreads: pinthreads.o parse_args.o
+	${CC} ${CFLAGS} -o pinthreads pinthreads.o parse_args.o
+
 
 install:
 	mkdir -p ${PREFIX}/lib/pinthreads/
