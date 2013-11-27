@@ -25,7 +25,7 @@ char *get_lib_path() {
    FILE * flib = fopen(lib, "r");
    if(!flib) {
       free(lib);
-      assert(asprintf(&lib, PREFIX "lib/pinthreads/pin.so"));
+      assert(asprintf(&lib, PREFIX "/lib/pinthreads/pin.so"));
    } else {
       fclose(flib);
    }
