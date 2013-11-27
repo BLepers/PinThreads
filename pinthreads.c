@@ -61,11 +61,14 @@ int main(int argc, char **argv){
 
    char *shm_name = tempnam(".", "shm_");
    struct shared_state *s = init_shm(shm_name, 1);
+   s->next_core = 0;
+   s->cores = NULL; // each fork will create its own copy of s->cores
    setenv("PINTHREADS_SHMID", shm_name, 1);
    free(shm_name);
 
    pthread_mutex_init(&s->pin_lock, NULL);
-   parse_cores(cores, &s->cores, &s->nr_entries_in_cores);
+   setenv("PINTHREADS_CORES", cores, 1);
+   parse_cores(cores, NULL, &s->nr_entries_in_cores);
 
    execvp(argv[0], argv);
    perror("execvp");

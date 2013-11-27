@@ -11,7 +11,7 @@ int get_next_core() {
    shm->next_core = (shm->next_core + 1) % (shm->nr_entries_in_cores);
    pthread_mutex_unlock(&shm->pin_lock);
 
-   return core;
+   return shm->cores[core];
 }
 
 void *init_shm(char *id, int create) {

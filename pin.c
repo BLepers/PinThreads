@@ -1,4 +1,5 @@
 #include "common.h"
+#include "parse_args.h"
 #include "shm.h"
 
 static void m_init(void);
@@ -46,7 +47,8 @@ void __attribute__((constructor)) m_init(void) {
    old_pthread_setaffinity_np = (int (*) (pthread_t, size_t, const cpu_set_t *)) dlsym(RTLD_NEXT, "pthread_setaffinity_np");
    old_pthread_create = (int (*)(pthread_t*, const pthread_attr_t*, void* (*)(void*), void*)) dlsym(RTLD_NEXT, "pthread_create");
 
-   init_shm(getenv("PINTHREAD_SHMID"), 0);
+   struct shared_state *s = init_shm(getenv("PINTHREADS_SHMID"), 0);
+   parse_cores(strdup(getenv("PINTHREADS_CORES")), &s->cores, NULL);
 
    core = get_next_core(); 
    CPU_ZERO(&mask);
