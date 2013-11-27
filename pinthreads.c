@@ -1,12 +1,6 @@
-#define _GNU_SOURCE
-#include <stdio.h>
-#include <sys/sysinfo.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <libgen.h>
-#include <assert.h>
+#include "common.h"
 #include "parse_args.h"
+#include "shm.h"
 
 void usage(char * app_name) {
    fprintf(stderr, "Usage: %s -c <list of cores> <command>\n", app_name);
@@ -44,10 +38,7 @@ int main(int argc, char **argv){
                exit(EXIT_FAILURE);
             }
             
-            cores = malloc(strlen(optarg) + 1);
-            strcpy(cores, optarg);
-
-            parse_cores(optarg, NULL, NULL);
+            cores = strdup(optarg);
             break;
          default:
             usage(argv[0]);
@@ -65,10 +56,16 @@ int main(int argc, char **argv){
    argv +=  optind;  
    
    char *lib = get_lib_path();
-   setenv("PINTHREADS_CORES", cores, 1);
    setenv("LD_PRELOAD", lib, 1);
    free(lib);
 
+   char *shm_name = tempnam(".", "shm_");
+   struct shared_state *s = init_shm(shm_name, 1);
+   setenv("PINTHREADS_SHMID", shm_name, 1);
+   free(shm_name);
+
+   pthread_mutex_init(&s->pin_lock, NULL);
+   parse_cores(cores, &s->cores, &s->nr_entries_in_cores);
 
    execvp(argv[0], argv);
    perror("execvp");

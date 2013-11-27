@@ -1,14 +1,4 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <string.h>
-#include <assert.h>
-#include <sys/sysinfo.h>
+#include "common.h"
 #include "parse_args.h"
 
 void parse_cores(char *arg, int **_cores, int *_nr_entries_in_cores) {
