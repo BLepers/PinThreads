@@ -16,10 +16,10 @@ static void set_affinity(pid_t tid, int cpu_id) {
    cpu_set_t mask;
    CPU_ZERO(&mask);
    CPU_SET(cpu_id, &mask);
-   printf("--> Setting tid %d on core %d\n", tid, cpu_id);
+   VERBOSE("--> Setting tid %d on core %d\n", tid, cpu_id);
    int r = old_sched_setaffinity(tid, sizeof(mask), &mask);
    if (r < 0) {
-      fprintf(stderr, "couldn't set affinity for %d\n", cpu_id);
+      fVERBOSE(stderr, "couldn't set affinity for %d\n", cpu_id);
       exit(1);
    }
 }
@@ -36,24 +36,28 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
    CPU_SET(core, &mask);
    old_pthread_setaffinity_np(*thread, sizeof(mask), &mask);
 
-   fprintf(stderr, "-> Set affinity to %d\n", core);
+   fVERBOSE(stderr, "-> Set affinity to %d\n", core);
 
    return ret;
 }
 
 int pthread_setaffinity_np(pthread_t thread, size_t cpusetsize, const cpu_set_t *cpuset) {
-   printf("-> Ignoring call to pthread_setaffinity_np performed by the application\n");
+   VERBOSE("-> Ignoring call to pthread_setaffinity_np performed by the application\n");
    return 0;
 }
 
 int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
-   printf("-> Ignoring call to sched_setaffinity performed by the application\n");
+   VERBOSE("-> Ignoring call to sched_setaffinity performed by the application\n");
    return 0;
 }
 
 pid_t fork(void) {
    pid_t ret = old_fork();
    if(ret == 0) {
+      /** SHM MUST point on a valid memory region **/
+      struct shared_state *s = init_shm(getenv("PINTHREADS_SHMID"), 0);
+      parse_cores(strdup(getenv("PINTHREADS_CORES")), &s->cores, NULL);
+
       set_affinity(gettid(), get_next_core());
    }
 
@@ -64,7 +68,7 @@ void __attribute__((constructor)) m_init(void) {
    if(old_pthread_create) 
       return;
 
-   printf("Init called for pid %d\n", gettid());
+   VERBOSE("Init called for pid %d\n", gettid());
 
    old_sched_setaffinity = (int (*) (pid_t, size_t, const cpu_set_t*)) dlsym(RTLD_NEXT, "sched_setaffinity");
    old_pthread_setaffinity_np = (int (*) (pthread_t, size_t, const cpu_set_t *)) dlsym(RTLD_NEXT, "pthread_setaffinity_np");

@@ -28,9 +28,10 @@ char *get_lib_path() {
 
 int main(int argc, char **argv){
    char c;
+   char *verbose = "0";
    char *cores = NULL;
 
-   while ((c = getopt(argc, argv, "+c:")) != -1) {
+   while ((c = getopt(argc, argv, "+vc:")) != -1) {
       switch (c) {
          case 'c':
             if(cores) {
@@ -39,6 +40,9 @@ int main(int argc, char **argv){
             }
             
             cores = strdup(optarg);
+            break;
+         case 'v':
+            verbose = "1";
             break;
          default:
             usage(argv[0]);
@@ -69,6 +73,8 @@ int main(int argc, char **argv){
    pthread_mutex_init(&s->pin_lock, NULL);
    setenv("PINTHREADS_CORES", cores, 1);
    parse_cores(cores, NULL, &s->nr_entries_in_cores);
+
+   setenv("PINTHREADS_VERBOSE", verbose, 1);
 
    execvp(argv[0], argv);
    perror("execvp");

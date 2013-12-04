@@ -24,13 +24,13 @@ void *init_shm(char *id, int create) {
    mem_key = ftok(id, 'a');
    shm_id = shmget(mem_key, sizeof(*shm), (create?IPC_CREAT:0) | 0666);
    if (shm_id < 0) {
-      printf("*** shmget error ***\n");
+      fprintf(stderr, "*** shmget error ***\n");
       exit(1);
    }
 
    shm = shmat(shm_id, NULL, 0);  
    if ((long) shm == -1) {
-      printf("*** shmat error ***\n");
+      fprintf(stderr, "*** shmat error ***\n");
       exit(1);
    }
 
