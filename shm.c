@@ -2,8 +2,7 @@
 #include "shm.h"
 
 static struct shared_state *shm;
-
-int get_next_core() {
+int get_next_core(int * cores) {
    assert(shm);
 
    pthread_mutex_lock(&shm->pin_lock);
@@ -11,7 +10,7 @@ int get_next_core() {
    shm->next_core = (shm->next_core + 1) % (shm->nr_entries_in_cores);
    pthread_mutex_unlock(&shm->pin_lock);
 
-   return shm->cores[core];
+   return cores[core];
 }
 
 void *init_shm(char *id, int create) {

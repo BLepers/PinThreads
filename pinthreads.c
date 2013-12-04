@@ -66,7 +66,6 @@ int main(int argc, char **argv){
    char *shm_name = tempnam(".", "shm_");
    struct shared_state *s = init_shm(shm_name, 1);
    s->next_core = 0;
-   s->cores = NULL; // each fork will create its own copy of s->cores
    setenv("PINTHREADS_SHMID", shm_name, 1);
    free(shm_name);
 

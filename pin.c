@@ -8,6 +8,8 @@ static int (*old_pthread_setaffinity_np) (pthread_t, size_t, const cpu_set_t *);
 static int (*old_sched_setaffinity) (pid_t, size_t, const cpu_set_t*);
 static pid_t (*old_fork)(void);
 
+static int* cores;
+
 static pid_t gettid(void) {
    return syscall(__NR_gettid);
 }
@@ -19,7 +21,7 @@ static void set_affinity(pid_t tid, int cpu_id) {
    VERBOSE("--> Setting tid %d on core %d\n", tid, cpu_id);
    int r = old_sched_setaffinity(tid, sizeof(mask), &mask);
    if (r < 0) {
-      fVERBOSE(stderr, "couldn't set affinity for %d\n", cpu_id);
+      fprintf(stderr, "couldn't set affinity for %d\n", cpu_id);
       exit(1);
    }
 }
@@ -31,12 +33,12 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
 
    ret = old_pthread_create(thread, attr, start_routine, arg);
 
-   core = get_next_core();
+   core = get_next_core(cores);
    CPU_ZERO(&mask);
    CPU_SET(core, &mask);
    old_pthread_setaffinity_np(*thread, sizeof(mask), &mask);
 
-   fVERBOSE(stderr, "-> Set affinity to %d\n", core);
+   VERBOSE("-> Set affinity to %d\n", core);
 
    return ret;
 }
@@ -54,11 +56,7 @@ int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
 pid_t fork(void) {
    pid_t ret = old_fork();
    if(ret == 0) {
-      /** SHM MUST point on a valid memory region **/
-      struct shared_state *s = init_shm(getenv("PINTHREADS_SHMID"), 0);
-      parse_cores(strdup(getenv("PINTHREADS_CORES")), &s->cores, NULL);
-
-      set_affinity(gettid(), get_next_core());
+      set_affinity(gettid(), get_next_core(cores));
    }
 
    return ret;
@@ -75,8 +73,8 @@ void __attribute__((constructor)) m_init(void) {
    old_pthread_create = (int (*)(pthread_t*, const pthread_attr_t*, void* (*)(void*), void*)) dlsym(RTLD_NEXT, "pthread_create");
    old_fork = (pid_t (*)(void)) dlsym(RTLD_NEXT, "fork");
 
-   struct shared_state *s = init_shm(getenv("PINTHREADS_SHMID"), 0);
-   parse_cores(strdup(getenv("PINTHREADS_CORES")), &s->cores, NULL);
+   init_shm(getenv("PINTHREADS_SHMID"), 0);
+   parse_cores(strdup(getenv("PINTHREADS_CORES")), &cores, NULL);
 
-   set_affinity(gettid(), get_next_core());
+   set_affinity(gettid(), get_next_core(cores));
 }
