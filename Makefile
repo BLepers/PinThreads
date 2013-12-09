@@ -1,6 +1,6 @@
 PREFIX=/usr/local
 CFLAGS=-Wall -g -g -O2 -DPREFIX="\"${PREFIX}\"" -fPIC
-LDFLAGS= -ldl -lpthread
+LDFLAGS= -ldl -lpthread -lnuma
 
 OBJECTS = pin.o 
 

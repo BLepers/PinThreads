@@ -12,6 +12,7 @@ static pid_t (*old_fork)(void);
 static int (*old_clone)(int (*)(void *), void *, int, void *, ...);
 
 static int* cores;
+static int nr_entries_in_cores;
 
 static pid_t gettid(void) {
    return syscall(__NR_gettid);
@@ -36,7 +37,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
 
    ret = old_pthread_create(thread, attr, start_routine, arg);
 
-   core = get_next_core(cores);
+   core = get_next_core(cores, nr_entries_in_cores);
    CPU_ZERO(&mask);
    CPU_SET(core, &mask);
    old_pthread_setaffinity_np(*thread, sizeof(mask), &mask);
@@ -59,7 +60,7 @@ int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
 pid_t fork(void) {
    pid_t ret = old_fork();
    if(ret > 0) {
-      set_affinity(ret, get_next_core(cores));
+      set_affinity(ret, get_next_core(cores, nr_entries_in_cores));
    }
 
    return ret;
@@ -96,7 +97,7 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
    va_end(arg_list);
 
    if(ret > 0) {
-      set_affinity(ret, get_next_core(cores));
+      set_affinity(gettid(), get_next_core(cores, nr_entries_in_cores));
    }
 
    return ret;
@@ -116,7 +117,12 @@ void __attribute__((constructor)) m_init(void) {
    old_clone = (int (*)(int (*)(void *), void *, int flags, void *arg, ...)) dlsym(RTLD_NEXT, "clone");
 
    init_shm(getenv("PINTHREADS_SHMID"), 0);
-   parse_cores(strdup(getenv("PINTHREADS_CORES")), &cores, NULL);
 
-   set_affinity(gettid(), get_next_core(cores));
+   if(getenv("PINTHREADS_CORES"))
+      parse_cores(strdup(getenv("PINTHREADS_CORES")), &cores, &nr_entries_in_cores, 0);
+   else
+      parse_cores(strdup(getenv("PINTHREADS_NODES")), &cores, &nr_entries_in_cores, 1);
+
+
+   set_affinity(gettid(), get_next_core(cores, nr_entries_in_cores));
 }

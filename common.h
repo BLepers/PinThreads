@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <numa.h>
 
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \
