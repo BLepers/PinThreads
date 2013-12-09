@@ -1,6 +1,6 @@
 PREFIX=/usr/local
 CFLAGS=-Wall -g -g -O2 -DPREFIX="\"${PREFIX}\"" -fPIC
-LDFLAGS= -ldl -lpthread -lnuma
+LDLIBS= -ldl -lpthread -lnuma
 
 OBJECTS = pin.o 
 
@@ -13,10 +13,10 @@ makefile.dep: *.[Cch]
 -include makefile.dep
 
 pin.so: pin.o parse_args.o shm.o
-	${CC} -shared -o $@ $^ ${LDFLAGS}
+	${CC} -shared -o $@ $^ ${LDLIBS}
 
 pinthreads: pinthreads.o parse_args.o shm.o
-	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS}
+	${CC} ${CFLAGS} -o $@ $^ ${LDLIBS}
 
 
 install:
