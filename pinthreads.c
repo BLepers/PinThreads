@@ -29,16 +29,16 @@ char *get_lib_path() {
    return lib;
 }
 
-void add_core_to_str(char * str, int * str_size, int * str_written, int core) {
+void add_core_to_str(char ** str, int * str_size, int * str_written, int core) {
    do {
       int max = *str_size - *str_written - 1;
-      int written = snprintf(str + *str_written, max, "%d,", core);
-
-      if(written == max) {
+      int written = snprintf(*str + *str_written, max, "%d,", core);
+      
+      if(written > max) {
          *str_size *= 2;
-         str = (char *) realloc(str, *str_size * sizeof(char));
+         *str = (char *) realloc(*str, *str_size * sizeof(char));
 
-         assert(str);
+         assert(*str);
       }
       else {
          *str_written += written;
@@ -72,7 +72,7 @@ char * build_default_affinity_string (int shuffle) {
          int j;
          for(j = 0; j < nr_cores; j++) {
             if (numa_bitmask_isbitset(bm[i], j)) {
-               add_core_to_str(str, &str_size, &str_written, j);
+               add_core_to_str(&str, &str_size, &str_written, j);
             }
          }
       }
@@ -91,7 +91,7 @@ char * build_default_affinity_string (int shuffle) {
             }
 
             if(found == idx){
-               add_core_to_str(str, &str_size, &str_written, j);
+               add_core_to_str(&str, &str_size, &str_written, j);
                break;
             }
 
