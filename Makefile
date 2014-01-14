@@ -8,7 +8,7 @@ OBJECTS = pin.o
 all: makefile.dep pinthreads pin.so
 
 makefile.dep: *.[Cch]
-	for i in *.[Cc]; do gcc -MM "$${i}" ${CFLAGS}; done > $@
+	for i in *.[Cc]; do ${CC} -MM "$${i}" ${CFLAGS}; done > $@
 	
 -include makefile.dep
 
