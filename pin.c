@@ -72,7 +72,7 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
 
    va_start(arg_list, arg);
 
-   if((flags & CLONE_CHILD_CLEARTID) || (flags & CLONE_CHILD_CLEARTID)) { 
+   if((flags & CLONE_CHILD_CLEARTID) || (flags & CLONE_CHILD_CLEARTID)) {
       pid_t *ptid = va_arg(arg_list, pid_t*);
       struct user_desc *tls = va_arg(arg_list, struct user_desc*);
       pid_t *ctid = va_arg(arg_list, pid_t*);
@@ -87,7 +87,7 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
    }
    else if(flags & CLONE_PARENT_SETTID) {
       pid_t *ptid = va_arg(arg_list, pid_t*);
-   
+
       ret = old_clone(fn, child_stack, flags, arg, ptid);
    }
    else {
@@ -105,7 +105,7 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
 
 
 void __attribute__((constructor)) m_init(void) {
-   if(old_pthread_create) 
+   if(old_pthread_create)
       return;
 
    VERBOSE("Init called for pid %d\n", gettid());

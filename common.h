@@ -23,13 +23,20 @@
 
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \
-   int verbose = 0; \
+   char * verbose_str_err = getenv("PINTHREADS_VERBOSE_STDERR"); \
+   int verbose = 0, verbose_err = 0; \
    if(verbose_str) { \
       verbose = atoi(verbose_str); \
    } \
-   \
+   if(verbose_str_err) { \
+      verbose_err = atoi(verbose_str_err); \
+   } \
    if(verbose) { \
-      printf(msg, ##args); \
+      if(verbose_err) { \
+         fprintf(stderr, msg, ##args); \
+      } else { \
+         printf(msg, ##args); \
+      } \
    } \
 }
 #endif

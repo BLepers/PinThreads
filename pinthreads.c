@@ -33,7 +33,7 @@ void add_core_to_str(char ** str, int * str_size, int * str_written, int core) {
    do {
       int max = *str_size - *str_written - 1;
       int written = snprintf(*str + *str_written, max, "%d,", core);
-      
+
       if(written > max) {
          *str_size *= 2;
          *str = (char *) realloc(*str, *str_size * sizeof(char));
@@ -79,7 +79,7 @@ char * build_default_affinity_string (int shuffle) {
    }
    else {
       int next_node = 0;
-      
+
       for(i = 0; i < nr_cores; i++) {
          int idx = (i / nr_nodes) + 1;
          int found = 0;
@@ -112,18 +112,19 @@ char * build_default_affinity_string (int shuffle) {
 int main(int argc, char **argv){
    char c;
    char *verbose = "0";
+   char *verbose_err = "0";
    char *cores = NULL;
    char *nodes = NULL;
 
    int shuffle = 0;
-   while ((c = getopt(argc, argv, "+vsc:n:")) != -1) {
+   while ((c = getopt(argc, argv, "+vVsc:n:")) != -1) {
       switch (c) {
          case 'c':
             if(cores) {
                fprintf(stderr, "-c or -n already used !\n");
                exit(EXIT_FAILURE);
             }
-            
+
             cores = strdup(optarg);
             break;
          case 'n':
@@ -131,7 +132,7 @@ int main(int argc, char **argv){
                fprintf(stderr, "-c or -n already used !\n");
                exit(EXIT_FAILURE);
             }
-            
+
             nodes = strdup(optarg);
             break;
          case 's':
@@ -139,6 +140,10 @@ int main(int argc, char **argv){
             break;
          case 'v':
             verbose = "1";
+            break;
+         case 'V':
+            verbose = "1";
+            verbose_err = "1";
             break;
          default:
             usage(argv[0]);
@@ -154,8 +159,8 @@ int main(int argc, char **argv){
       usage(argv[0]);
    }
 
-   argv +=  optind;  
-   
+   argv +=  optind;
+
    char *lib = get_lib_path();
    setenv("LD_PRELOAD", lib, 1);
    free(lib);
@@ -180,6 +185,7 @@ int main(int argc, char **argv){
    }
 
    setenv("PINTHREADS_VERBOSE", verbose, 1);
+   setenv("PINTHREADS_VERBOSE_STDERR", verbose_err, 1);
 
    execvp(argv[0], argv);
    perror("execvp");

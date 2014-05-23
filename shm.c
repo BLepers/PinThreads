@@ -27,7 +27,7 @@ void *init_shm(char *id, int create) {
       exit(1);
    }
 
-   shm = shmat(shm_id, NULL, 0);  
+   shm = shmat(shm_id, NULL, 0);
    if ((long) shm == -1) {
       fprintf(stderr, "*** shmat error ***\n");
       exit(1);
