@@ -20,6 +20,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <numa.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \
@@ -39,4 +41,9 @@
       } \
    } \
 }
+
+static inline pid_t gettid(void) {
+   return syscall(__NR_gettid);
+}
+
 #endif

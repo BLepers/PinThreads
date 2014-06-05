@@ -14,10 +14,6 @@ static int (*old_clone)(int (*)(void *), void *, int, void *, ...);
 static int* cores;
 static int nr_entries_in_cores;
 
-static pid_t gettid(void) {
-   return syscall(__NR_gettid);
-}
-
 static void set_affinity(pid_t tid, int cpu_id) {
    cpu_set_t mask;
    CPU_ZERO(&mask);

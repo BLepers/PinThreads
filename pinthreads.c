@@ -165,10 +165,12 @@ int main(int argc, char **argv){
    setenv("LD_PRELOAD", lib, 1);
    free(lib);
 
-   char *shm_name = tempnam(".", "shm_");
-   struct shared_state *s = init_shm(shm_name, 1);
+   char *shm_name = tempnam("/tmp/", "shm_"), *uniq_shm_name = NULL;
+   assert(asprintf(&uniq_shm_name, "%s_%d", shm_name, gettid()));
+   struct shared_state *s = init_shm(uniq_shm_name, 1);
    s->next_core = 0;
-   setenv("PINTHREADS_SHMID", shm_name, 1);
+   setenv("PINTHREADS_SHMID", uniq_shm_name, 1);
+   free(uniq_shm_name);
    free(shm_name);
 
    pthread_mutex_init(&s->pin_lock, NULL);

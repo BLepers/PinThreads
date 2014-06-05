@@ -20,7 +20,12 @@ void *init_shm(char *id, int create) {
    if(shm)
       goto end;
 
+   FILE *shmf = fopen(id, "ab+");
+   assert(shmf);
+
    mem_key = ftok(id, 'a');
+   assert(mem_key != -1);
+
    shm_id = shmget(mem_key, sizeof(*shm), (create?IPC_CREAT:0) | 0666);
    if (shm_id < 0) {
       fprintf(stderr, "*** shmget error ***\n");
@@ -32,6 +37,8 @@ void *init_shm(char *id, int create) {
       fprintf(stderr, "*** shmat error ***\n");
       exit(1);
    }
+
+   fclose(shmf);
 
 end:
    return shm;
