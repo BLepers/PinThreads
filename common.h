@@ -29,6 +29,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#define GET_CORES 0
+#define CHANGE_CORES 1
+
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \
    char * verbose_str_err = getenv("PINTHREADS_VERBOSE_STDERR"); \

@@ -33,7 +33,10 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
 
    ret = old_pthread_create(thread, attr, start_routine, arg);
 
+   lock_shm();
    core = get_next_core(cores, nr_entries_in_cores);
+   unlock_shm();
+
    CPU_ZERO(&mask);
    CPU_SET(core, &mask);
    old_pthread_setaffinity_np(*thread, sizeof(mask), &mask);
@@ -56,7 +59,9 @@ int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
 pid_t fork(void) {
    pid_t ret = old_fork();
    if(ret > 0) {
+      lock_shm();
       set_affinity(ret, get_next_core(cores, nr_entries_in_cores));
+      unlock_shm();
    }
 
    return ret;
@@ -93,7 +98,9 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
    va_end(arg_list);
 
    if(ret > 0) {
+      lock_shm();
       set_affinity(gettid(), get_next_core(cores, nr_entries_in_cores));
+      unlock_shm();
    }
 
    return ret;
@@ -132,22 +139,38 @@ void *server(void *data) {
       }
 
       int n;
-      int nb_cores, *_cores, i;
+      int nb_cores, *_cores, i, action;
 
-      n = recv(s2, &nb_cores, sizeof(int), 0);
+      n = recv(s2, &action, sizeof(int), 0);
       assert(n == sizeof(int));
 
-      _cores = malloc(nb_cores * sizeof(*cores));
-      for(i = 0; i < nb_cores; i++) {
-         n = recv(s2, &(_cores[i]), sizeof(int), 0);
+      if(action == CHANGE_CORES) {
+         n = recv(s2, &nb_cores, sizeof(int), 0);
          assert(n == sizeof(int));
-      }
-      close(s2);
 
-      VERBOSE("[SERVER] Changing cores\n");
-      free(cores);
-      cores = _cores;
-      nr_entries_in_cores = nb_cores;
+         _cores = malloc(nb_cores * sizeof(*cores));
+         for(i = 0; i < nb_cores; i++) {
+            n = recv(s2, &(_cores[i]), sizeof(int), 0);
+            assert(n == sizeof(int));
+         }
+
+         VERBOSE("[SERVER] Changing cores\n");
+         lock_shm();
+         free(cores);
+         cores = _cores;
+         nr_entries_in_cores = nb_cores;
+         unlock_shm();
+      } else if(action == GET_CORES) {
+         n = send(s2, &nr_entries_in_cores, sizeof(int), 0);
+         assert(n == sizeof(int));
+
+         for(i = 0; i < nr_entries_in_cores; i++) {
+            n = send(s2, &(cores[i]), sizeof(int), 0);
+            assert(n == sizeof(int));
+         }
+      }
+
+      close(s2);
    }
 
    return NULL;
@@ -190,5 +213,7 @@ void __attribute__((constructor)) m_init(void) {
       old_pthread_create(&server_thread, NULL, server, NULL);
    }
 
+   lock_shm();
    set_affinity(gettid(), get_next_core(cores, nr_entries_in_cores));
+   unlock_shm();
 }

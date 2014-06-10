@@ -1,6 +1,6 @@
 #include "common.h"
 
-int change_cores(int pid, int nr_cores, int *cores) {
+int get_socket(int pid) {
     int s, len;
     struct sockaddr_un remote;
 
@@ -19,6 +19,19 @@ int change_cores(int pid, int nr_cores, int *cores) {
         perror("connect");
         return -1;
     }
+    return s;
+}
+
+int change_cores(int pid, int nr_cores, int *cores) {
+    int s = get_socket(pid);
+    if(s < 0)
+       return s;
+
+    int action = CHANGE_CORES;
+    if (send(s, &action, sizeof(action), 0) == -1) {
+       perror("send");
+       return -2;
+    }
 
     if (send(s, &nr_cores, sizeof(nr_cores), 0) == -1) {
        perror("send");
@@ -29,6 +42,35 @@ int change_cores(int pid, int nr_cores, int *cores) {
     for(i = 0; i < nr_cores; i++) {
        if (send(s, &(cores[i]), sizeof(cores[i]), 0) == -1) {
           perror("send");
+          return -3;
+       }
+    }
+    close(s);
+    return 0;
+}
+
+int get_cores(int pid, int *nr_cores, int **cores) {
+    int s = get_socket(pid);
+    if(s < 0)
+       return s;
+
+    int action = GET_CORES;
+    if (send(s, &action, sizeof(action), 0) == -1) {
+       perror("send");
+       return -2;
+    }
+
+    if (recv(s, nr_cores, sizeof(*nr_cores), 0) == -1) {
+       perror("recv");
+       return -2;
+    }
+
+    int i;
+    *cores = malloc(*nr_cores * sizeof(**cores));
+
+    for(i = 0; i < *nr_cores; i++) {
+       if (recv(s, &((*cores)[i]), sizeof((*cores)[i]), 0) == -1) {
+          perror("recv");
           return -3;
        }
     }
