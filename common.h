@@ -22,6 +22,8 @@
 #include <numa.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/file.h>
+#include <signal.h>
 
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \

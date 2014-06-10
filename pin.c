@@ -99,6 +99,13 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
    return ret;
 }
 
+void m_exit(void) {
+   cleanup_shm(getenv("PINTHREADS_SHMID"));
+}
+
+void m_signal(int signal) {
+   exit(signal);
+}
 
 void __attribute__((constructor)) m_init(void) {
    if(old_pthread_create)
@@ -113,6 +120,10 @@ void __attribute__((constructor)) m_init(void) {
    old_clone = (int (*)(int (*)(void *), void *, int flags, void *arg, ...)) dlsym(RTLD_NEXT, "clone");
 
    init_shm(getenv("PINTHREADS_SHMID"), 0);
+   atexit(m_exit);
+   signal(SIGTERM, m_signal);
+   signal(SIGINT, m_signal);
+   signal(SIGSEGV, m_signal);
 
    if(getenv("PINTHREADS_CORES"))
       parse_cores(strdup(getenv("PINTHREADS_CORES")), &cores, &nr_entries_in_cores, 0);

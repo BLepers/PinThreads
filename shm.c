@@ -38,8 +38,41 @@ void *init_shm(char *id, int create) {
       exit(1);
    }
 
+   if(create) {
+      shm->next_core = 0;
+      shm->refcount = 0;
+      pthread_mutex_init(&shm->pin_lock, NULL);
+   } else {
+      pthread_mutex_lock(&shm->pin_lock);
+      shm->refcount++;
+      pthread_mutex_unlock(&shm->pin_lock);
+   }
+
    fclose(shmf);
 
 end:
    return shm;
+}
+
+void cleanup_shm(char *id) {
+   int free_shm = 0;
+
+   pthread_mutex_lock(&shm->pin_lock);
+   shm->refcount--;
+   if(shm->refcount <= 0) {
+      free_shm = 1;
+   }
+   pthread_mutex_unlock(&shm->pin_lock);
+
+   shmdt(shm);
+
+   if(free_shm) {
+      int       shm_id;
+      key_t     mem_key;
+
+      mem_key = ftok(id, 'a');
+      shm_id = shmget(mem_key, sizeof(*shm), 0666);
+      shmctl(shm_id, IPC_RMID, NULL);
+      unlink(id);
+   }
 }
