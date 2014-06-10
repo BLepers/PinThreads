@@ -8,7 +8,6 @@ void usage(char * app_name) {
    fprintf(stderr, "\t\tYou can use Nx to indicate all cores of a node (e.g., -c 0,N1)\n");
    fprintf(stderr, "\t-n: list of nodes separated by commas or dashes (e.g, -n 0,2-3\n");
    fprintf(stderr, "\t-s: when not specifying any cores/nodes, you might want to evenly distribute threads on nodes (as opposed to maximize locality)\n");
-   fprintf(stderr, "\t-R: when set, the file that backups the shared memory segment will be named /tmp/shm_<pid_of_pinthread>. Useful if you want to modify it from another process\n");
    fprintf(stderr, "\t-v: verbose (-V verbose on stderr)\n");
    exit(EXIT_FAILURE);
 }
@@ -117,10 +116,9 @@ int main(int argc, char **argv){
    char *verbose_err = "0";
    char *cores = NULL;
    char *nodes = NULL;
-   int predictable_shm_name = 0;
 
    int shuffle = 0;
-   while ((c = getopt(argc, argv, "+vVsc:n:R")) != -1) {
+   while ((c = getopt(argc, argv, "+vVsc:n:")) != -1) {
       switch (c) {
          case 'c':
             if(cores) {
@@ -148,9 +146,6 @@ int main(int argc, char **argv){
             verbose = "1";
             verbose_err = "1";
             break;
-         case 'R':
-	    predictable_shm_name = 1;
-            break;
          default:
             usage(argv[0]);
       }
@@ -174,12 +169,11 @@ int main(int argc, char **argv){
    setenv("LD_PRELOAD", lib, 1);
    free(lib);
 
-   char *shm_name = tempnam("/tmp/", "shm_"), *uniq_shm_name = NULL;
-   assert(asprintf(&uniq_shm_name, "%s_%d", predictable_shm_name?"/tmp/shm":shm_name, gettid()));
+   char *uniq_shm_name = NULL;
+   assert(asprintf(&uniq_shm_name, "%s_%d", "/tmp/shm", gettid()));
    assert(init_shm(uniq_shm_name, 1));
    setenv("PINTHREADS_SHMID", uniq_shm_name, 1);
    free(uniq_shm_name);
-   free(shm_name);
 
 
    unsetenv("PINTHREADS_CORES");
