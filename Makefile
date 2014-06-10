@@ -2,14 +2,14 @@ PREFIX=/usr/local
 CFLAGS=-Wall -g -g -O2 -DPREFIX="\"${PREFIX}\"" -fPIC
 LDLIBS= -ldl -lpthread -lnuma
 
-OBJECTS = pin.o 
+OBJECTS = pin.o
 
 .PHONY: all clean
-all: makefile.dep pinthreads pin.so
+all: makefile.dep pinthreads pin.so pinhook.so tests/testhooks tests/delayedthreads
 
 makefile.dep: *.[Cch]
 	for i in *.[Cc]; do ${CC} -MM "$${i}" ${CFLAGS}; done > $@
-	
+
 -include makefile.dep
 
 pin.so: pin.o parse_args.o shm.o
@@ -18,6 +18,14 @@ pin.so: pin.o parse_args.o shm.o
 pinthreads: pinthreads.o parse_args.o shm.o
 	${CC} ${CFLAGS} -o $@ $^ ${LDLIBS}
 
+pinhook.so: pinhook.o
+	${CC} -shared -o $@ $^ ${LDLIBS}
+
+tests/testhooks: tests/testhooks.o pinhook.so
+	${CC} ${CFLAGS} -o $@ $^ ${LDLIBS} pinhook.so
+
+tests/delayedthreads: tests/delayedthreads.o
+	${CC} ${CFLAGS} -o $@ $^ ${LDLIBS}
 
 install:
 	mkdir -p ${PREFIX}/lib/pinthreads/
@@ -25,4 +33,4 @@ install:
 	cp pinthreads ${PREFIX}/bin
 
 clean:
-	rm -f *.o *.so makefile.dep pinthreads
+	rm -f *.o *.so makefile.dep pinthreads tests/testhooks tests/delayedthreads tests/*.o

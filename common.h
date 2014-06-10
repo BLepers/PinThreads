@@ -22,8 +22,12 @@
 #include <numa.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/file.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \

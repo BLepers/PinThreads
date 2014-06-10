@@ -2,6 +2,15 @@
 #include "shm.h"
 
 static struct shared_state *shm;
+
+void lock_shm(void) {
+   pthread_mutex_lock(&shm->pin_lock);
+}
+
+void unlock_shm(void) {
+   pthread_mutex_unlock(&shm->pin_lock);
+}
+
 int get_next_core(int * cores, int nr_entries_in_cores) {
    assert(shm);
 

@@ -112,13 +112,14 @@ char * build_default_affinity_string (int shuffle) {
 
 int main(int argc, char **argv){
    char c;
+   int server = 0;
    char *verbose = "0";
    char *verbose_err = "0";
    char *cores = NULL;
    char *nodes = NULL;
 
    int shuffle = 0;
-   while ((c = getopt(argc, argv, "+vVsc:n:")) != -1) {
+   while ((c = getopt(argc, argv, "+vVsc:n:S")) != -1) {
       switch (c) {
          case 'c':
             if(cores) {
@@ -139,6 +140,9 @@ int main(int argc, char **argv){
          case 's':
             shuffle = 1;
             break;
+         case 'S':
+            server = 1;
+            break;
          case 'v':
             verbose = "1";
             break;
@@ -153,6 +157,11 @@ int main(int argc, char **argv){
 
    setenv("PINTHREADS_VERBOSE", verbose, 1);
    setenv("PINTHREADS_VERBOSE_STDERR", verbose_err, 1);
+
+   if(server)
+      setenv("PINTHREADS_SERVER", "1", 1);
+   else
+      unsetenv("PINTHREADS_SERVER");
 
    if(!cores && !nodes) {
       VERBOSE("Not defined any cores/nodes. Using defaults (shuffle = %d)\n", shuffle);
