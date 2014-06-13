@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <semaphore.h>
 #include "shm.h"
 #include "pinserver.h"
 

@@ -57,6 +57,7 @@ struct shared_state *_create_shm(char *id, int create, struct shared_state *cont
       memcpy(shm, content, sizeof(*content));
       shm->next_core = 0;
       shm->refcount = 0;
+      shm->server_fd = -1;
       for(i = 0; i < content->nr_entries_in_cores; i++)
          shm->cores[i] = cores[i];
       pthread_mutex_init(&shm->pin_lock, NULL);

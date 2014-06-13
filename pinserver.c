@@ -1,8 +1,17 @@
 #include "common.h"
-#include "shm.h"
 
 static int *core_to_node;
 static int **node_to_cores;
+static sem_t _sem_init;
+
+void init_server(void) {
+   sem_init(&_sem_init, 0, 0);
+}
+
+void wait_for_server(void) {
+   sem_wait(&_sem_init);
+}
+
 static void build_node_to_core() {
    if(core_to_node)
       return;
@@ -48,20 +57,30 @@ void *server(void *data) {
    socklen_t sock_size = sizeof(remote);
    char *path = NULL;
 
-   assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
+   lock_shm();
+   if(get_shm()->server_fd == -1) {
+      assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
 
-   if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-      perror("socket");
-      exit(1);
-   }
+      if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+         perror("socket");
+         exit(1);
+      }
 
-   local.sun_family = AF_UNIX;
-   strcpy(local.sun_path, path);
-   len = strlen(local.sun_path) + sizeof(local.sun_family);
-   if (bind(s, (struct sockaddr *)&local, len) == -1) {
-      perror("bind");
-      exit(1);
+      local.sun_family = AF_UNIX;
+      strcpy(local.sun_path, path);
+      len = strlen(local.sun_path) + sizeof(local.sun_family);
+      if (bind(s, (struct sockaddr *)&local, len) == -1) {
+         perror("bind");
+         exit(1);
+      }
+
+      get_shm()->server_fd = s;
+   } else {
+      s = get_shm()->server_fd;
    }
+   unlock_shm();
+
+   sem_post(&_sem_init);
 
    if (listen(s, 5) == -1) {
       perror("listen");

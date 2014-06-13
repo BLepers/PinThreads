@@ -10,6 +10,7 @@ struct shared_state {
    int verbose;
    int verbose_err;
    int server;
+   int server_fd;
    int nr_entries_in_cores;
    int cores[]; // must be the last field
 };

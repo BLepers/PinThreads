@@ -126,7 +126,9 @@ void __attribute__((constructor)) m_init(void) {
 
    if(get_shm()->server) {
       pthread_t server_thread;
+      init_server();
       old_pthread_create(&server_thread, NULL, server, NULL);
+      wait_for_server();
    }
 
    set_affinity(gettid(), get_next_core());
