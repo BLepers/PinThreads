@@ -49,7 +49,7 @@ int change_cores(int pid, int nr_cores, int *cores) {
     return 0;
 }
 
-int get_cores(int pid, int *nr_cores, int **cores) {
+int get_cores_list(int pid, int *nr_cores, int **cores) {
     int s = get_socket(pid);
     if(s < 0)
        return s;
@@ -74,6 +74,30 @@ int get_cores(int pid, int *nr_cores, int **cores) {
           return -3;
        }
     }
+    close(s);
+    return 0;
+}
+
+int switch_node(int pid, int old_node, int new_node) {
+    int s = get_socket(pid);
+    if(s < 0)
+       return s;
+
+    int action = CHANGE_NODE;
+    if (send(s, &action, sizeof(action), 0) == -1) {
+       perror("send");
+       return -2;
+    }
+
+    if (send(s, &old_node, sizeof(old_node), 0) == -1) {
+       perror("send");
+       return -2;
+    }
+    if (send(s, &new_node, sizeof(new_node), 0) == -1) {
+       perror("send");
+       return -2;
+    }
+
     close(s);
     return 0;
 }

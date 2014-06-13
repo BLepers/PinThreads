@@ -14,6 +14,15 @@ static int (*old_clone)(int (*)(void *), void *, int, void *, ...);
 static int* cores;
 static int nr_entries_in_cores;
 
+void get_cores(int **_cores, int *_nr_entries_in_cores) {
+   *_cores = cores;
+   *_nr_entries_in_cores = nr_entries_in_cores;
+}
+void set_cores(int *_cores, int _nr_entries_in_cores) {
+   cores = _cores;
+   nr_entries_in_cores = _nr_entries_in_cores;
+}
+
 static void set_affinity(pid_t tid, int cpu_id) {
    cpu_set_t mask;
    CPU_ZERO(&mask);
@@ -104,76 +113,6 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
    }
 
    return ret;
-}
-
-void *server(void *data) {
-   int s, s2, len;
-   struct sockaddr_un local, remote;
-   socklen_t sock_size = sizeof(remote);
-   char *path = NULL;
-
-   assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
-
-   if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-      perror("socket");
-      exit(1);
-   }
-
-   local.sun_family = AF_UNIX;
-   strcpy(local.sun_path, path);
-   len = strlen(local.sun_path) + sizeof(local.sun_family);
-   if (bind(s, (struct sockaddr *)&local, len) == -1) {
-      perror("bind");
-      exit(1);
-   }
-
-   if (listen(s, 5) == -1) {
-      perror("listen");
-      exit(1);
-   }
-
-   for(;;) {
-      if ((s2 = accept(s, &remote, &sock_size)) == -1) {
-         perror("accept");
-         exit(1);
-      }
-
-      int n;
-      int nb_cores, *_cores, i, action;
-
-      n = recv(s2, &action, sizeof(int), 0);
-      assert(n == sizeof(int));
-
-      if(action == CHANGE_CORES) {
-         n = recv(s2, &nb_cores, sizeof(int), 0);
-         assert(n == sizeof(int));
-
-         _cores = malloc(nb_cores * sizeof(*cores));
-         for(i = 0; i < nb_cores; i++) {
-            n = recv(s2, &(_cores[i]), sizeof(int), 0);
-            assert(n == sizeof(int));
-         }
-
-         VERBOSE("[SERVER] Changing cores\n");
-         lock_shm();
-         free(cores);
-         cores = _cores;
-         nr_entries_in_cores = nb_cores;
-         unlock_shm();
-      } else if(action == GET_CORES) {
-         n = send(s2, &nr_entries_in_cores, sizeof(int), 0);
-         assert(n == sizeof(int));
-
-         for(i = 0; i < nr_entries_in_cores; i++) {
-            n = send(s2, &(cores[i]), sizeof(int), 0);
-            assert(n == sizeof(int));
-         }
-      }
-
-      close(s2);
-   }
-
-   return NULL;
 }
 
 void m_exit(void) {

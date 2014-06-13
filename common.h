@@ -28,9 +28,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-
-#define GET_CORES 0
-#define CHANGE_CORES 1
+#include "pinserver.h"
 
 #define VERBOSE(msg, args...) { \
    char * verbose_str = getenv("PINTHREADS_VERBOSE"); \
@@ -54,5 +52,8 @@
 static inline pid_t gettid(void) {
    return syscall(__NR_gettid);
 }
+
+void get_cores(int **_cores, int *_nr_entries_in_cores);
+void set_cores(int *_cores, int _nr_entries_in_cores);
 
 #endif
