@@ -75,37 +75,34 @@ void *server(void *data) {
       }
 
       int n;
-      int nb_cores, *_cores, i, action;
+      int i, action;
 
       n = recv(s2, &action, sizeof(int), 0);
       assert(n == sizeof(int));
 
       if(action == CHANGE_CORES) {
-         n = recv(s2, &nb_cores, sizeof(int), 0);
-         assert(n == sizeof(int));
-
-         _cores = malloc(nb_cores * sizeof(*_cores));
-         for(i = 0; i < nb_cores; i++) {
-            n = recv(s2, &(_cores[i]), sizeof(int), 0);
-            assert(n == sizeof(int));
-         }
+         int nb_cores;
 
          VERBOSE("[SERVER] Changing cores\n");
-         lock_shm();
-         int *cores, nr_entries_in_cores;
-         get_cores(&cores, &nr_entries_in_cores);
-         free(cores);
-         set_cores(_cores, nb_cores);
-         unlock_shm();
+
+         n = recv(s2, &nb_cores, sizeof(int), 0);
+         assert(n == sizeof(int));
+         assert(nb_cores == get_shm()->nr_entries_in_cores);
+
+         for(i = 0; i < nb_cores; i++) {
+            int core;
+            n = recv(s2, &core, sizeof(int), 0);
+            assert(n == sizeof(int));
+            get_shm()->cores[i] = core;
+         }
       } else if(action == GET_CORES) {
-         int *cores, nr_entries_in_cores;
-         get_cores(&cores, &nr_entries_in_cores);
+         int nr_entries_in_cores = get_shm()->nr_entries_in_cores;
 
          n = send(s2, &nr_entries_in_cores, sizeof(int), 0);
          assert(n == sizeof(int));
 
          for(i = 0; i < nr_entries_in_cores; i++) {
-            n = send(s2, &(cores[i]), sizeof(int), 0);
+            n = send(s2, &(get_shm()->cores[i]), sizeof(int), 0);
             assert(n == sizeof(int));
          }
       } else if(action == CHANGE_NODE) {
@@ -115,12 +112,11 @@ void *server(void *data) {
          n = recv(s2, &new_node, sizeof(int), 0);
          assert(n == sizeof(int));
 
-         int *cores, nr_entries_in_cores;
-         get_cores(&cores, &nr_entries_in_cores);
+         int nr_entries_in_cores = get_shm()->nr_entries_in_cores;
          build_node_to_core();
          for(i = 0; i < nr_entries_in_cores; i++) {
-            if(core_to_node[cores[i]] == old_node)
-               cores[i] = node_to_cores[new_node][core_id(cores[i])];
+            if(core_to_node[get_shm()->cores[i]] == old_node)
+               get_shm()->cores[i] = node_to_cores[new_node][core_id(get_shm()->cores[i])];
          }
       }
 

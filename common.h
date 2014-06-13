@@ -28,20 +28,12 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "shm.h"
 #include "pinserver.h"
 
 #define VERBOSE(msg, args...) { \
-   char * verbose_str = getenv("PINTHREADS_VERBOSE"); \
-   char * verbose_str_err = getenv("PINTHREADS_VERBOSE_STDERR"); \
-   int verbose = 0, verbose_err = 0; \
-   if(verbose_str) { \
-      verbose = atoi(verbose_str); \
-   } \
-   if(verbose_str_err) { \
-      verbose_err = atoi(verbose_str_err); \
-   } \
-   if(verbose) { \
-      if(verbose_err) { \
+   if(get_shm()->verbose) { \
+      if(get_shm()->verbose_err) { \
          fprintf(stderr, msg, ##args); \
       } else { \
          printf(msg, ##args); \
@@ -52,8 +44,5 @@
 static inline pid_t gettid(void) {
    return syscall(__NR_gettid);
 }
-
-void get_cores(int **_cores, int *_nr_entries_in_cores);
-void set_cores(int *_cores, int _nr_entries_in_cores);
 
 #endif

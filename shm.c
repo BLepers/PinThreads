@@ -3,6 +3,10 @@
 
 static struct shared_state *shm;
 
+struct shared_state *get_shm(void) {
+   return shm;
+}
+
 void lock_shm(void) {
    pthread_mutex_lock(&shm->pin_lock);
 }
@@ -11,15 +15,19 @@ void unlock_shm(void) {
    pthread_mutex_unlock(&shm->pin_lock);
 }
 
-int get_next_core(int * cores, int nr_entries_in_cores) {
+int get_next_core() {
    assert(shm);
 
-   int core = shm->next_core;
-   shm->next_core = (shm->next_core + 1) % (nr_entries_in_cores);
-   return cores[core];
+   pthread_mutex_lock(&shm->pin_lock);
+   int ret, core = shm->next_core;
+   shm->next_core = (shm->next_core + 1) % (shm->nr_entries_in_cores);
+   ret = shm->cores[core];
+   pthread_mutex_unlock(&shm->pin_lock);
+
+   return ret;
 }
 
-void *init_shm(char *id, int create) {
+struct shared_state *_create_shm(char *id, int create, struct shared_state *content, int *cores) {
    int       shm_id;
    key_t     mem_key;
 
@@ -32,7 +40,7 @@ void *init_shm(char *id, int create) {
    mem_key = ftok(id, 'a');
    assert(mem_key != -1);
 
-   shm_id = shmget(mem_key, sizeof(*shm), (create?IPC_CREAT:0) | 0666);
+   shm_id = shmget(mem_key, sizeof(*shm) + sizeof(*shm->cores)*content->nr_entries_in_cores, (create?IPC_CREAT:0) | 0666);
    if (shm_id < 0) {
       fprintf(stderr, "*** shmget error ***\n");
       exit(1);
@@ -45,8 +53,12 @@ void *init_shm(char *id, int create) {
    }
 
    if(create) {
+      int i;
+      memcpy(shm, content, sizeof(*content));
       shm->next_core = 0;
       shm->refcount = 0;
+      for(i = 0; i < content->nr_entries_in_cores; i++)
+         shm->cores[i] = cores[i];
       pthread_mutex_init(&shm->pin_lock, NULL);
    } else {
       pthread_mutex_lock(&shm->pin_lock);
@@ -58,6 +70,23 @@ void *init_shm(char *id, int create) {
 
 end:
    return shm;
+}
+
+char *get_shm_size(void) {
+   char *size;
+   assert(asprintf(&size, "%d", (int)(sizeof(*shm) + sizeof(*shm->cores)*shm->nr_entries_in_cores)));
+   return size;
+}
+
+struct shared_state *create_shm(char *id, struct shared_state *content, int *cores) {
+   return _create_shm(id, 1, content, cores);
+}
+
+struct shared_state *restore_shm(char *id, char *size) {
+   struct shared_state fake;
+   sscanf(size, "%d", &fake.nr_entries_in_cores);
+   fake.nr_entries_in_cores = (fake.nr_entries_in_cores - sizeof(*shm))/sizeof(*shm->cores);
+   return _create_shm(id, 0, &fake, NULL);
 }
 
 void cleanup_shm(char *id) {

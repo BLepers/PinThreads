@@ -11,18 +11,6 @@ static int (*old_sched_setaffinity) (pid_t, size_t, const cpu_set_t*);
 static pid_t (*old_fork)(void);
 static int (*old_clone)(int (*)(void *), void *, int, void *, ...);
 
-static int* cores;
-static int nr_entries_in_cores;
-
-void get_cores(int **_cores, int *_nr_entries_in_cores) {
-   *_cores = cores;
-   *_nr_entries_in_cores = nr_entries_in_cores;
-}
-void set_cores(int *_cores, int _nr_entries_in_cores) {
-   cores = _cores;
-   nr_entries_in_cores = _nr_entries_in_cores;
-}
-
 static void set_affinity(pid_t tid, int cpu_id) {
    cpu_set_t mask;
    CPU_ZERO(&mask);
@@ -42,9 +30,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
 
    ret = old_pthread_create(thread, attr, start_routine, arg);
 
-   lock_shm();
-   core = get_next_core(cores, nr_entries_in_cores);
-   unlock_shm();
+   core = get_next_core();
 
    CPU_ZERO(&mask);
    CPU_SET(core, &mask);
@@ -68,9 +54,7 @@ int sched_setaffinity(pid_t pid, size_t cpusetsize, const cpu_set_t *mask) {
 pid_t fork(void) {
    pid_t ret = old_fork();
    if(ret > 0) {
-      lock_shm();
-      set_affinity(ret, get_next_core(cores, nr_entries_in_cores));
-      unlock_shm();
+      set_affinity(ret, get_next_core());
    }
 
    return ret;
@@ -107,9 +91,7 @@ int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ... ) {
    va_end(arg_list);
 
    if(ret > 0) {
-      lock_shm();
-      set_affinity(gettid(), get_next_core(cores, nr_entries_in_cores));
-      unlock_shm();
+      set_affinity(gettid(), get_next_core());
    }
 
    return ret;
@@ -127,8 +109,9 @@ void __attribute__((constructor)) m_init(void) {
    if(old_pthread_create)
       return;
 
-   VERBOSE("Init called for pid %d\n", gettid());
+   restore_shm(getenv("PINTHREADS_SHMID"), getenv("PINTHREADS_SHMSIZE"));
 
+   VERBOSE("Init called for pid %d\n", gettid());
 
    old_sched_setaffinity = (int (*) (pid_t, size_t, const cpu_set_t*)) dlsym(RTLD_NEXT, "sched_setaffinity");
    old_pthread_setaffinity_np = (int (*) (pthread_t, size_t, const cpu_set_t *)) dlsym(RTLD_NEXT, "pthread_setaffinity_np");
@@ -136,23 +119,15 @@ void __attribute__((constructor)) m_init(void) {
    old_fork = (pid_t (*)(void)) dlsym(RTLD_NEXT, "fork");
    old_clone = (int (*)(int (*)(void *), void *, int flags, void *arg, ...)) dlsym(RTLD_NEXT, "clone");
 
-   init_shm(getenv("PINTHREADS_SHMID"), 0);
    atexit(m_exit);
    signal(SIGTERM, m_signal);
    signal(SIGINT, m_signal);
    signal(SIGSEGV, m_signal);
 
-   if(getenv("PINTHREADS_CORES"))
-      parse_cores(strdup(getenv("PINTHREADS_CORES")), &cores, &nr_entries_in_cores, 0);
-   else
-      parse_cores(strdup(getenv("PINTHREADS_NODES")), &cores, &nr_entries_in_cores, 1);
-
-   if(getenv("PINTHREADS_SERVER")) {
+   if(get_shm()->server) {
       pthread_t server_thread;
       old_pthread_create(&server_thread, NULL, server, NULL);
    }
 
-   lock_shm();
-   set_affinity(gettid(), get_next_core(cores, nr_entries_in_cores));
-   unlock_shm();
+   set_affinity(gettid(), get_next_core());
 }

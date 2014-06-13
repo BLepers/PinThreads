@@ -112,13 +112,11 @@ char * build_default_affinity_string (int shuffle) {
 
 int main(int argc, char **argv){
    char c;
-   int server = 0;
-   char *verbose = "0";
-   char *verbose_err = "0";
    char *cores = NULL;
    char *nodes = NULL;
-
    int shuffle = 0;
+   struct shared_state s = {};
+
    while ((c = getopt(argc, argv, "+vVsc:n:S")) != -1) {
       switch (c) {
          case 'c':
@@ -141,60 +139,45 @@ int main(int argc, char **argv){
             shuffle = 1;
             break;
          case 'S':
-            server = 1;
+            s.server = 1;
             break;
          case 'v':
-            verbose = "1";
+            s.verbose = 1;
             break;
          case 'V':
-            verbose = "1";
-            verbose_err = "1";
+            s.verbose = 1;
+            s.verbose_err = 1;
             break;
          default:
             usage(argv[0]);
       }
    }
 
-   setenv("PINTHREADS_VERBOSE", verbose, 1);
-   setenv("PINTHREADS_VERBOSE_STDERR", verbose_err, 1);
-
-   if(server)
-      setenv("PINTHREADS_SERVER", "1", 1);
-   else
-      unsetenv("PINTHREADS_SERVER");
-
-   if(!cores && !nodes) {
-      VERBOSE("Not defined any cores/nodes. Using defaults (shuffle = %d)\n", shuffle);
+   if(!cores && !nodes)
       cores = build_default_affinity_string(shuffle);
-   }
 
-   if(optind == argc) {
+   if(optind == argc)
       usage(argv[0]);
-   }
-
    argv +=  optind;
 
    char *lib = get_lib_path();
    setenv("LD_PRELOAD", lib, 1);
    free(lib);
 
+   int *cores_array;
+   if(cores) {
+      parse_cores(cores, &cores_array, &s.nr_entries_in_cores, 0);
+   } else {
+      parse_cores(nodes, &cores_array, &s.nr_entries_in_cores, 1);
+   }
+
    char *uniq_shm_name = NULL;
    assert(asprintf(&uniq_shm_name, "%s_%d", "/tmp/shm", gettid()));
-   assert(init_shm(uniq_shm_name, 1));
+   assert(create_shm(uniq_shm_name, &s, cores_array));
    setenv("PINTHREADS_SHMID", uniq_shm_name, 1);
+   setenv("PINTHREADS_SHMSIZE", get_shm_size(), 1);
    free(uniq_shm_name);
 
-
-   unsetenv("PINTHREADS_CORES");
-   unsetenv("PINTHREADS_NODES");
-
-   if(cores) {
-      setenv("PINTHREADS_CORES", cores, 1);
-      parse_cores(cores, NULL, NULL, 0);
-   } else {
-      setenv("PINTHREADS_NODES", nodes, 1);
-      parse_cores(nodes, NULL, NULL, 1);
-   }
 
    execvp(argv[0], argv);
    perror("execvp");
