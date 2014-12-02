@@ -35,13 +35,24 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
    int core;
    int ret;
    cpu_set_t mask;
+   CPU_ZERO(&mask);
 
    ret = old_pthread_create(thread, attr, start_routine, arg);
 
    core = get_next_core();
 
-   CPU_ZERO(&mask);
-   CPU_SET(core, &mask);
+   if(!get_shm()->per_node) {
+      CPU_SET(core, &mask);
+   } else {
+      int i, node = numa_node_of_cpu(core);
+      struct bitmask * bmp = numa_allocate_cpumask();
+      numa_node_to_cpus(node, bmp);
+      for(i = 0; i < numa_num_configured_cpus(); i++) {
+         if(numa_bitmask_isbitset(bmp, i))
+            CPU_SET(i, &mask);
+      }
+      numa_free_cpumask(bmp);
+   }
    old_pthread_setaffinity_np(*thread, sizeof(mask), &mask);
 
    VERBOSE("-> Set affinity to %d\n", core);
