@@ -3,10 +3,11 @@
 #include "shm.h"
 
 void usage(char * app_name) {
-   fprintf(stderr, "Usage: %s [-c <list of cores> | -n <list of nodes>] [-v -V -R] <command>\n", app_name);
+   fprintf(stderr, "Usage: %s [-c <list of cores> | -n <list of nodes>] [-N] [-v -V -R] <command>\n", app_name);
    fprintf(stderr, "\t-c: list of cores separated by commas or dashes (e.g, -c 0-7,9,15-20)\n");
    fprintf(stderr, "\t\tYou can use Nx to indicate all cores of a node (e.g., -c 0,N1)\n");
-   fprintf(stderr, "\t-n: list of nodes separated by commas or dashes (e.g, -n 0,2-3\n");
+   fprintf(stderr, "\t-n: list of nodes separated by commas or dashes (e.g, -n 0,2-3)\n");
+   fprintf(stderr, "\t-N: pin per node and not per core\n");
    fprintf(stderr, "\t-s: when not specifying any cores/nodes, you might want to evenly distribute threads on nodes (as opposed to maximize locality)\n");
    fprintf(stderr, "\t-v: verbose (-V verbose on stderr)\n");
    exit(EXIT_FAILURE);
@@ -117,7 +118,7 @@ int main(int argc, char **argv){
    int shuffle = 0;
    struct shared_state s = {};
 
-   while ((c = getopt(argc, argv, "+vVsc:n:S")) != -1) {
+   while ((c = getopt(argc, argv, "+vVsc:n:SN")) != -1) {
       switch (c) {
          case 'c':
             if(cores) {
@@ -134,6 +135,9 @@ int main(int argc, char **argv){
             }
 
             nodes = strdup(optarg);
+            break;
+         case 'N':
+            s.per_node = 1;
             break;
          case 's':
             shuffle = 1;

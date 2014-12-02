@@ -12,14 +12,22 @@ static pid_t (*old_fork)(void);
 static int (*old_clone)(int (*)(void *), void *, int, void *, ...);
 
 static void set_affinity(pid_t tid, int cpu_id) {
-   cpu_set_t mask;
-   CPU_ZERO(&mask);
-   CPU_SET(cpu_id, &mask);
-   VERBOSE("--> Setting tid %d on core %d\n", tid, cpu_id);
-   int r = old_sched_setaffinity(tid, sizeof(mask), &mask);
-   if (r < 0) {
-      fprintf(stderr, "couldn't set affinity for %d\n", cpu_id);
-      exit(1);
+   if(!get_shm()->per_node) {
+      cpu_set_t mask;
+      CPU_ZERO(&mask);
+      CPU_SET(cpu_id, &mask);
+      VERBOSE("--> Setting tid %d on core %d\n", tid, cpu_id);
+      int r = old_sched_setaffinity(tid, sizeof(mask), &mask);
+      if (r < 0) {
+         fprintf(stderr, "couldn't set affinity on %d\n", cpu_id);
+         exit(1);
+      }
+   } else {
+      int r = numa_run_on_node(numa_node_of_cpu(cpu_id));
+      if(r < 0) {
+         fprintf(stderr, "couldn't set affinity on node of cpu %d\n", cpu_id);
+         exit(1);
+      }
    }
 }
 

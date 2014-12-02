@@ -11,6 +11,7 @@ struct shared_state {
    int verbose_err;
    int server;
    int server_fd;
+   int per_node;
    int nr_entries_in_cores;
    int cores[]; // must be the last field
 };
