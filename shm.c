@@ -95,7 +95,10 @@ void cleanup_shm(char *id) {
 
    pthread_mutex_lock(&shm->pin_lock);
    shm->refcount--;
-   if(shm->refcount <= 0) {
+
+   assert(shm->refcount >= 0);
+
+   if(shm->refcount == 0) {
       free_shm = 1;
    }
    pthread_mutex_unlock(&shm->pin_lock);
