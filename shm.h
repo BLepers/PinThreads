@@ -13,6 +13,7 @@ struct shared_state {
    int server_fd;
    int per_node;
    int nr_entries_in_cores;
+   int active;
    int cores[]; // must be the last field
 };
 

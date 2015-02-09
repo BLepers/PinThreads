@@ -137,6 +137,20 @@ void *server(void *data) {
             if(core_to_node[get_shm()->cores[i]] == old_node)
                get_shm()->cores[i] = node_to_cores[new_node][core_id(get_shm()->cores[i])];
          }
+      } else if (action == GET_ACTIVE) {
+	 int active = get_shm()->active;
+  	 VERBOSE("[SERVER] Client asks for active, response is %d\n", active);
+	 send(s2, &active, sizeof(active), 0);
+      }
+      else if (action == SET_ACTIVE) {
+	 int old_active = get_shm()->active;
+	 int new_active = 0;
+
+	 n = recv(s2, &new_active, sizeof(int), 0);
+	 assert(n == sizeof(int));
+
+  	 VERBOSE("[SERVER] Client set active at %d (previous = %d)\n", new_active, old_active);
+	 get_shm()->active = new_active;
       }
 
       close(s2);
