@@ -10,6 +10,9 @@ void usage(char * app_name) {
    fprintf(stderr, "\t-N: pin per node and not per core\n");
    fprintf(stderr, "\t-s: when not specifying any cores/nodes, you might want to evenly distribute threads on nodes (as opposed to maximize locality)\n");
    fprintf(stderr, "\t-v: verbose (-V verbose on stderr)\n");
+   fprintf(stderr, "\t-S: start server using AF_UNIX socket. The socket file is at\n");
+   fprintf(stderr, "\t    /tmp/shmid[_PINTHREADS_SOCK_SUFFIX]_sock where PINTHREADS_SOCK_SUFFIX\n");
+   fprintf(stderr, "\t    is an optionnal environment variable to facilitate socket retrieval\n");
    exit(EXIT_FAILURE);
 }
 

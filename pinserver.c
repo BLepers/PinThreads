@@ -59,7 +59,13 @@ void *server(void *data) {
 
    lock_shm();
    if(get_shm()->server_fd == -1) {
-      assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
+
+      /* allow user to set suffix to facilitate socket retrieval */
+      char *suffix = getenv("PINTHREADS_SOCK_SUFFIX");
+      if (suffix == NULL)
+ 	 assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
+      else
+ 	 assert(asprintf(&path, "%s_%s_sock", getenv("PINTHREADS_SHMID"), suffix));
 
       if ((s = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
          perror("socket");

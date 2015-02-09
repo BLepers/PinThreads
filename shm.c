@@ -105,7 +105,12 @@ void cleanup_shm(char *id) {
       /* cleanup the socket file with the shm */
       if(shm->server) {
 	char *path = NULL;
-	assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
+	char *suffix = getenv("PINTHREADS_SOCK_SUFFIX");
+	if (suffix == NULL)
+ 	  assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
+	else
+	  assert(asprintf(&path, "%s_%s_sock", getenv("PINTHREADS_SHMID"), suffix));
+
         VERBOSE("[SERVER] Delete socket file %s\n", path);
 	unlink(path);
 	free(path);
