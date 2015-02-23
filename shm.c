@@ -58,6 +58,7 @@ struct shared_state *_create_shm(char *id, int create, struct shared_state *cont
       shm->next_core = 0;
       shm->refcount = 0;
       shm->server_fd = -1;
+      shm->active = 1;
       for(i = 0; i < content->nr_entries_in_cores; i++)
          shm->cores[i] = cores[i];
       pthread_mutex_init(&shm->pin_lock, NULL);
@@ -100,6 +101,20 @@ void cleanup_shm(char *id) {
 
    if(shm->refcount == 0) {
       free_shm = 1;
+
+      /* cleanup the socket file with the shm */
+      if(shm->server) {
+	char *path = NULL;
+	char *suffix = getenv("PINTHREADS_SOCK_SUFFIX");
+	if (suffix == NULL)
+ 	  assert(asprintf(&path, "%s_sock", getenv("PINTHREADS_SHMID")));
+	else
+	  assert(asprintf(&path, "%s_%s_sock", getenv("PINTHREADS_SHMID"), suffix));
+
+        VERBOSE("[SERVER] Delete socket file %s\n", path);
+	unlink(path);
+	free(path);
+      }
    }
    pthread_mutex_unlock(&shm->pin_lock);
 

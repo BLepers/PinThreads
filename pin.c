@@ -12,6 +12,9 @@ static pid_t (*old_fork)(void);
 static int (*old_clone)(int (*)(void *), void *, int, void *, ...);
 
 static void set_affinity(pid_t tid, int cpu_id) {
+   if(!get_shm()->active)
+     return;
+
    if(!get_shm()->per_node) {
       cpu_set_t mask;
       CPU_ZERO(&mask);
@@ -38,6 +41,9 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_
    CPU_ZERO(&mask);
 
    ret = old_pthread_create(thread, attr, start_routine, arg);
+
+   if(!get_shm()->active)
+     return ret;
 
    core = get_next_core();
 
